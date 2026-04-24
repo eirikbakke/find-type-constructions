@@ -73,7 +73,8 @@ Also only relevant while developing the plugin itself. If you prefer to test cha
 
 ```sh
 npm run compile
-vsce package   # rebuilds the .vsix
+# Rebuild the .vsix.
+vsce package
 code --install-extension find-type-constructions-0.0.1.vsix \
      --force
 ```
