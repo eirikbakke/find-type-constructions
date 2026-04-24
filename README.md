@@ -75,7 +75,7 @@ vsce package                                                    # rebuilds the .
 code --install-extension find-type-constructions-0.0.1.vsix --force
 ```
 
-Then reload VSCode (Cmd+Shift+P → **Developer: Reload Window**) so the new version is picked up.
+**You must then reload the VSCode window** for the new version to take effect: open the Command Palette (Cmd+Shift+P) and run **Developer: Reload Window**. Without this step VSCode keeps the previously loaded extension code in memory and your changes will appear to have no effect.
 
 ## Known limitations
 
