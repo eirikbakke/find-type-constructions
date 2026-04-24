@@ -38,9 +38,9 @@ async function runCommand() {
     async () => {
       try {
         const result = findConstructions(tsconfigPath, filePath, offset);
-        if (result.kind === "no-symbol") {
+        if (result.kind === "error") {
           vscode.window.showErrorMessage(
-            "No interface or type alias symbol at cursor."
+            `Find Type Constructions: ${result.message}`
           );
           return;
         }
@@ -101,7 +101,7 @@ function createProgram(tsconfigPath: string): ts.Program {
 }
 
 type FindResult =
-  | { kind: "no-symbol" }
+  | { kind: "error"; message: string }
   | { kind: "ok"; name: string; locations: vscode.Location[] };
 
 function findConstructions(
@@ -116,18 +116,44 @@ function findConstructions(
   const sourceFile = program
     .getSourceFiles()
     .find((sf) => path.normalize(sf.fileName) === normalized);
-  if (!sourceFile) return { kind: "no-symbol" };
+  if (!sourceFile) {
+    return {
+      kind: "error",
+      message: `Active file is not part of the program loaded from ${tsconfigPath}.`,
+    };
+  }
 
   const token = findTokenAtPosition(sourceFile, offset);
-  if (!token || !ts.isIdentifier(token)) return { kind: "no-symbol" };
+  if (!token) {
+    return { kind: "error", message: "No token at cursor position." };
+  }
+  if (!ts.isIdentifier(token)) {
+    return {
+      kind: "error",
+      message: `Cursor is on a ${ts.SyntaxKind[token.kind]}, not an identifier.`,
+    };
+  }
 
   const symbol = checker.getSymbolAtLocation(token);
-  if (!symbol?.declarations?.length) return { kind: "no-symbol" };
+  if (!symbol?.declarations?.length) {
+    return {
+      kind: "error",
+      message: `No symbol resolved for identifier '${token.text}'.`,
+    };
+  }
 
   const isTypeSymbol = symbol.declarations.some(
     (d) => ts.isInterfaceDeclaration(d) || ts.isTypeAliasDeclaration(d)
   );
-  if (!isTypeSymbol) return { kind: "no-symbol" };
+  if (!isTypeSymbol) {
+    const kinds = symbol.declarations
+      .map((d) => ts.SyntaxKind[d.kind])
+      .join(", ");
+    return {
+      kind: "error",
+      message: `Symbol '${token.text}' is not an interface or type alias (declarations: ${kinds}).`,
+    };
+  }
 
   const targetDecls = new Set<ts.Declaration>(symbol.declarations);
   const locations: vscode.Location[] = [];
