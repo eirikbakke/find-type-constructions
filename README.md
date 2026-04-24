@@ -65,6 +65,18 @@ npm run compile
 
 Then open this folder in VSCode and press **F5** to launch an Extension Development Host with the plugin loaded — no packaging or install needed.
 
+## Rebuilding and reinstalling
+
+After making code changes, rebuild and reinstall the packaged extension into your main VSCode:
+
+```sh
+npm run compile
+vsce package                                                    # rebuilds the .vsix
+code --install-extension find-type-constructions-0.0.1.vsix --force
+```
+
+Then reload VSCode (Cmd+Shift+P → **Developer: Reload Window**) so the new version is picked up.
+
 ## Known limitations
 
 - Works off the nearest `tsconfig.json` above the active file; does not compose multiple projects.
