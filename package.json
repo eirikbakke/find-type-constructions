@@ -43,6 +43,9 @@
     "format:check": "prettier --check .",
     "check": "npm run typecheck && npm run lint && npm run format:check"
   },
+  "dependencies": {
+    "typescript": "^5.4.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "^18.0.0",
@@ -50,7 +53,6 @@
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.3.0",
-    "typescript": "^5.4.0",
     "typescript-eslint": "^8.0.0"
   }
 }
