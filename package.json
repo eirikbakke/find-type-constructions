@@ -1,0 +1,41 @@
+{
+  "name": "find-interface-constructions",
+  "displayName": "Find Interface Constructions",
+  "description": "Find all object literals assignable to the interface or type under the cursor.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "find-interface-constructions.find",
+        "title": "Find Interface Constructions"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "find-interface-constructions.find",
+          "when": "editorLangId == typescript || editorLangId == typescriptreact",
+          "group": "navigation@100"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.4.0"
+  }
+}
