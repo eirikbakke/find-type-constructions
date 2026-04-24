@@ -10,7 +10,7 @@ TypeScript's type system is structural: an object becomes a value of interface t
 
 In practice this means that when you want to add a field to an interface and update every construction site, the standard VSCode commands don't help:
 
-- **Find All References** (Shift+F12) returns every mention of the name — imports, parameter annotations, return types, etc. — not just constructions.
+- **Find All References** (Shift+F12) returns every mention of the name — imports, parameter annotations, return-type annotations, etc. — and typically misses the actual construction sites entirely. When a function declares its return type as an interface and returns an object literal, the interface name appears only at the function's signature, never at the `return` statement that produces the literal, so Find All References does not surface the construction at all.
 - **Go to Implementations** (Cmd+F12) reports "No implementations found" for interfaces, because implementations are only tracked for classes.
 
 The information does exist inside the TypeScript compiler: at every object literal, the checker computes a contextual type and verifies assignability. It is simply not surfaced through tsserver.

@@ -14,7 +14,7 @@ A small VSCode extension that adds a command, **Find Type Constructions**, for T
 
 TypeScript is structurally typed, so object literals become values of an interface type implicitly — there is no `new Foo(...)` to find. As a result, VSCode's built-in navigation fails the common refactoring workflow "I'm adding a field to this interface; show me every place I need to update":
 
-- **Find All References** returns every mention of the name, not just constructions.
+- **Find All References** returns every mention of the name — imports, parameter annotations, return-type annotations — and typically misses the actual construction sites entirely. The interface name often appears only at a function's signature, never at the `return` statement that produces the literal.
 - **Go to Implementations** is defined only for classes and reports "No implementations found" for interfaces.
 
 The TypeScript checker internally knows the contextual type at every object literal, but tsserver does not expose this. This extension bridges the gap by running its own `ts.Program` over the nearest `tsconfig.json` and querying `checker.getContextualType` at every `ObjectLiteralExpression`.
