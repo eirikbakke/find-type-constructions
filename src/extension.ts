@@ -239,7 +239,10 @@ function typeMatches(type: ts.Type, targetDecls: Set<ts.Declaration>): boolean {
     const t = queue.shift();
     if (t === undefined || seen.has(t)) continue;
     seen.add(t);
-    const decls = (t.aliasSymbol ?? t.symbol).declarations;
+    // t.symbol is typed non-nullable but is undefined at runtime for
+    // anonymous types / intrinsics, hence the eslint-disable.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const decls = (t.aliasSymbol ?? t.symbol)?.declarations;
     if (decls?.some((d) => targetDecls.has(d))) return true;
     // Unions / intersections: check each constituent.
     if (t.isUnionOrIntersection()) {
