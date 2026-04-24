@@ -2,6 +2,8 @@
 
 A VSCode extension that finds every place where an object literal is constructed satisfying the TypeScript interface (or type alias) under the cursor.
 
+> **Note:** This plugin was written entirely by [Claude Code](https://claude.com/claude-code) under the guidance of Eirik Bakke.
+
 ## Motivation
 
 TypeScript's type system is structural: an object becomes a value of interface type simply by having the right shape at an assignment site. There is no syntactic `new Foo(...)` marker, so neither tsserver nor VSCode can enumerate the places where an interface is constructed.

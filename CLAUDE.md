@@ -2,6 +2,10 @@
 
 Guidance for Claude Code when working in this repository.
 
+## Working style
+
+In this repository, Claude should commit its own changes automatically as it works, without waiting to be asked. Each commit should have a descriptive message that explains the motivation for the change, not just the mechanical description of what changed. Group related edits into a single coherent commit rather than committing file-by-file, and run `npm run check` before committing so no commit introduces failing type, lint, or format checks.
+
 ## What this project is
 
 A small VSCode extension that adds a command, **Find Type Constructions**, for TypeScript code. Given the interface or type alias under the cursor, it enumerates every object literal in the program whose contextual type resolves to that symbol.
@@ -30,6 +34,28 @@ npm run compile   # tsc -p .
 ```
 
 Launch an Extension Development Host with **F5** from within VSCode.
+
+## Quality checks
+
+All checks are expected to pass on every commit. Run the full suite with:
+
+```sh
+npm run check        # typecheck + lint + format:check
+```
+
+Or individually:
+
+```sh
+npm run typecheck    # tsc --noEmit against ./tsconfig.json (strict mode + extra flags)
+npm run lint         # ESLint with typescript-eslint strict + stylistic type-checked rules
+npm run lint:fix     # ESLint with --fix applied
+npm run format:check # Prettier in check mode
+npm run format       # Prettier writing fixes in place
+```
+
+Configuration lives in `tsconfig.json` (compiler strictness), `eslint.config.mjs` (lint rules and type-aware config), `.prettierrc.json` (formatting), and `.prettierignore`.
+
+Type-aware lint rules require a working `tsconfig.json`; if you add new top-level files that should be linted, include them in `tsconfig.json` or add a scoped ESLint block in `eslint.config.mjs`.
 
 ## Design notes and non-goals
 

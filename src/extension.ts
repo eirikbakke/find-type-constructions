@@ -5,14 +5,9 @@ import * as fs from "fs";
 
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "find-type-constructions.find",
-      runCommand
-    )
+    vscode.commands.registerCommand("find-type-constructions.find", runCommand)
   );
 }
-
-export function deactivate() {}
 
 async function runCommand() {
   const editor = vscode.window.activeTextEditor;
@@ -21,10 +16,7 @@ async function runCommand() {
     return;
   }
   const doc = editor.document;
-  if (
-    doc.languageId !== "typescript" &&
-    doc.languageId !== "typescriptreact"
-  ) {
+  if (doc.languageId !== "typescript" && doc.languageId !== "typescriptreact") {
     vscode.window.showErrorMessage("Not a TypeScript file.");
     return;
   }
@@ -75,17 +67,19 @@ async function runCommand() {
 
 function findTsConfig(fromPath: string): string | undefined {
   let dir = path.dirname(fromPath);
-  while (true) {
+  let parent = path.dirname(dir);
+  while (parent !== dir) {
     const candidate = path.join(dir, "tsconfig.json");
     if (fs.existsSync(candidate)) return candidate;
-    const parent = path.dirname(dir);
-    if (parent === dir) return undefined;
     dir = parent;
+    parent = path.dirname(dir);
   }
+  const candidate = path.join(dir, "tsconfig.json");
+  return fs.existsSync(candidate) ? candidate : undefined;
 }
 
 function createProgram(tsconfigPath: string): ts.Program {
-  const configFile = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
+  const configFile = ts.readConfigFile(tsconfigPath, (p) => ts.sys.readFile(p));
   if (configFile.error) {
     throw new Error(
       ts.flattenDiagnosticMessageText(configFile.error.messageText, "\n")
@@ -96,11 +90,14 @@ function createProgram(tsconfigPath: string): ts.Program {
     ts.sys,
     path.dirname(tsconfigPath)
   );
-  return ts.createProgram({
+  const programOptions: ts.CreateProgramOptions = {
     rootNames: parsed.fileNames,
     options: parsed.options,
-    projectReferences: parsed.projectReferences,
-  });
+  };
+  if (parsed.projectReferences) {
+    programOptions.projectReferences = parsed.projectReferences;
+  }
+  return ts.createProgram(programOptions);
 }
 
 type FindResult =
@@ -164,18 +161,15 @@ function findConstructions(
   return { kind: "ok", name: token.text, locations };
 }
 
-function typeMatches(
-  type: ts.Type,
-  targetDecls: Set<ts.Declaration>
-): boolean {
+function typeMatches(type: ts.Type, targetDecls: Set<ts.Declaration>): boolean {
   const queue: ts.Type[] = [type];
   const seen = new Set<ts.Type>();
-  while (queue.length) {
-    const t = queue.shift()!;
-    if (seen.has(t)) continue;
+  while (queue.length > 0) {
+    const t = queue.shift();
+    if (t === undefined || seen.has(t)) continue;
     seen.add(t);
-    const sym = t.aliasSymbol ?? t.symbol;
-    if (sym?.declarations?.some((d) => targetDecls.has(d))) return true;
+    const decls = (t.aliasSymbol ?? t.symbol).declarations;
+    if (decls?.some((d) => targetDecls.has(d))) return true;
     // Unions / intersections: check each constituent.
     if (t.isUnionOrIntersection()) {
       for (const part of t.types) queue.push(part);
