@@ -231,7 +231,7 @@ function findConstructions(
     const visit = (node: ts.Node) => {
       if (ts.isObjectLiteralExpression(node)) {
         const t = checker.getContextualType(node);
-        if (t && typeMatches(t, targetDecls)) {
+        if (t && typeMatches(t, targetDecls, checker)) {
           const start = sf.getLineAndCharacterOfPosition(node.getStart(sf));
           const end = sf.getLineAndCharacterOfPosition(node.getEnd());
           constructions.push({
@@ -263,7 +263,11 @@ function getLinePreview(sf: ts.SourceFile, line: number): string {
   return sf.text.slice(from, to).replace(/\s+$/, "").trim();
 }
 
-function typeMatches(type: ts.Type, targetDecls: Set<ts.Declaration>): boolean {
+function typeMatches(
+  type: ts.Type,
+  targetDecls: Set<ts.Declaration>,
+  checker: ts.TypeChecker
+): boolean {
   const queue: ts.Type[] = [type];
   const seen = new Set<ts.Type>();
   while (queue.length > 0) {
@@ -278,6 +282,11 @@ function typeMatches(type: ts.Type, targetDecls: Set<ts.Declaration>): boolean {
     // Unions / intersections: check each constituent.
     if (t.isUnionOrIntersection()) {
       for (const part of t.types) queue.push(part);
+    }
+    // Interface/class extends-chains: walk base types so a literal typed
+    // against a subtype of the cursor interface still matches.
+    if (t.isClassOrInterface()) {
+      for (const base of checker.getBaseTypes(t)) queue.push(base);
     }
   }
   return false;

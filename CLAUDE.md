@@ -60,5 +60,5 @@ Type-aware lint rules require a working `tsconfig.json`; if you add new top-leve
 ## Design notes and non-goals
 
 - The extension creates its own `ts.Program` rather than going through tsserver, because tsserver does not expose `getContextualType` to clients. This means a second type-check pass runs when the command is invoked; acceptable for an on-demand command.
-- Only direct type identity is reported. Subtype relationships (literal typed against a type that extends the cursor interface) are deliberately not followed — the common refactoring use case is "places that will need to supply the new field," which tracks identity, not subtyping.
+- Matching follows `extends` chains: a literal typed against a subtype of the cursor interface is reported too, since adding a required field to the base forces every subtype literal to supply it as well.
 - Matching is by declaration identity (`Set<ts.Declaration>`), not by name, so interfaces with colliding names in different modules do not cross-contaminate.

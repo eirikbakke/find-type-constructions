@@ -81,5 +81,4 @@ code --install-extension find-type-constructions-0.0.1.vsix \
 ## Known limitations
 
 - Works off the nearest `tsconfig.json` above the active file; does not compose multiple projects.
-- Reports direct type identity only. A literal typed against a subtype of the cursor interface will not be reported.
 - Does not separately flag spread expressions inside a literal.
