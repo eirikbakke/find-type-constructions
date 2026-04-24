@@ -24,9 +24,16 @@ async function runCommand() {
   const filePath = doc.uri.fsPath;
   const offset = doc.offsetAt(editor.selection.active);
 
-  const tsconfigPath = findTsConfig(filePath);
-  if (!tsconfigPath) {
+  const nearestTsconfig = findTsConfig(filePath);
+  if (!nearestTsconfig) {
     vscode.window.showErrorMessage("Could not find a tsconfig.json.");
+    return;
+  }
+  const tsconfigPath = resolveTsconfigForFile(nearestTsconfig, filePath);
+  if (!tsconfigPath) {
+    vscode.window.showErrorMessage(
+      `Active file is not included by ${nearestTsconfig} or any of its referenced projects.`
+    );
     return;
   }
 
@@ -76,6 +83,44 @@ function findTsConfig(fromPath: string): string | undefined {
   }
   const candidate = path.join(dir, "tsconfig.json");
   return fs.existsSync(candidate) ? candidate : undefined;
+}
+
+function parseTsconfig(tsconfigPath: string): ts.ParsedCommandLine | undefined {
+  const configFile = ts.readConfigFile(tsconfigPath, (p) => ts.sys.readFile(p));
+  if (configFile.error || !configFile.config) return undefined;
+  return ts.parseJsonConfigFileContent(
+    configFile.config,
+    ts.sys,
+    path.dirname(tsconfigPath)
+  );
+}
+
+function resolveTsconfigForFile(
+  tsconfigPath: string,
+  filePath: string
+): string | undefined {
+  const normalizedTarget = path.normalize(filePath);
+  const visited = new Set<string>();
+  const walk = (cfg: string): string | undefined => {
+    const resolved = path.normalize(cfg);
+    if (visited.has(resolved)) return undefined;
+    visited.add(resolved);
+    const parsed = parseTsconfig(resolved);
+    if (!parsed) return undefined;
+    if (parsed.fileNames.some((f) => path.normalize(f) === normalizedTarget)) {
+      return resolved;
+    }
+    for (const ref of parsed.projectReferences ?? []) {
+      // ref.path may point to a directory or a tsconfig file.
+      const refPath = ref.path.endsWith(".json")
+        ? ref.path
+        : path.join(ref.path, "tsconfig.json");
+      const hit = walk(refPath);
+      if (hit) return hit;
+    }
+    return undefined;
+  };
+  return walk(tsconfigPath);
 }
 
 function createProgram(tsconfigPath: string): ts.Program {
