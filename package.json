@@ -1,6 +1,6 @@
 {
-  "name": "find-interface-constructions",
-  "displayName": "Find Interface Constructions",
+  "name": "find-type-constructions",
+  "displayName": "Find Type Constructions",
   "description": "Find all object literals assignable to the interface or type under the cursor.",
   "version": "0.0.1",
   "publisher": "local",
@@ -15,14 +15,14 @@
   "contributes": {
     "commands": [
       {
-        "command": "find-interface-constructions.find",
-        "title": "Find Interface Constructions"
+        "command": "find-type-constructions.find",
+        "title": "Find Type Constructions"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "find-interface-constructions.find",
+          "command": "find-type-constructions.find",
           "when": "editorLangId == typescript || editorLangId == typescriptreact",
           "group": "navigation@100"
         }

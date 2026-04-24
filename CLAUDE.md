@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## What this project is
 
-A small VSCode extension that adds a command, **Find Interface Constructions**, for TypeScript code. Given the interface or type alias under the cursor, it enumerates every object literal in the program whose contextual type resolves to that symbol.
+A small VSCode extension that adds a command, **Find Type Constructions**, for TypeScript code. Given the interface or type alias under the cursor, it enumerates every object literal in the program whose contextual type resolves to that symbol.
 
 ## Why it exists
 
@@ -17,7 +17,7 @@ The TypeScript checker internally knows the contextual type at every object lite
 
 ## Architecture
 
-- `src/extension.ts` — the whole extension. Registers one command, `find-interface-constructions.find`.
+- `src/extension.ts` — the whole extension. Registers one command, `find-type-constructions.find`.
 - The command resolves the symbol under the cursor, verifies it is an `InterfaceDeclaration` or `TypeAliasDeclaration`, walks every source file in the program, and for each `ObjectLiteralExpression` compares the contextual type's symbol declarations against the target.
 - Union and intersection types are walked constituent-by-constituent so literals typed against `Foo | null` still match `Foo`.
 - Results are shown via the `editor.action.showReferences` command, which uses VSCode's References panel.

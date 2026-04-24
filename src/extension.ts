@@ -6,7 +6,7 @@ import * as fs from "fs";
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "find-interface-constructions.find",
+      "find-type-constructions.find",
       runCommand
     )
   );
@@ -41,7 +41,7 @@ async function runCommand() {
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Window,
-      title: "Finding interface constructions...",
+      title: "Finding type constructions...",
     },
     async () => {
       try {
@@ -66,7 +66,7 @@ async function runCommand() {
         );
       } catch (e) {
         vscode.window.showErrorMessage(
-          `Find Interface Constructions: ${(e as Error).message}`
+          `Find Type Constructions: ${(e as Error).message}`
         );
       }
     }

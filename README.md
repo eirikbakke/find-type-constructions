@@ -1,4 +1,4 @@
-# Find Interface Constructions
+# Find Type Constructions
 
 A VSCode extension that finds every place where an object literal is constructed satisfying the TypeScript interface (or type alias) under the cursor.
 
@@ -17,14 +17,14 @@ This extension exposes it.
 
 ## What it does
 
-Adds a command, **Find Interface Constructions**, that operates on the interface or type alias under the cursor. It loads a `ts.Program` from the nearest `tsconfig.json`, walks every `ObjectLiteralExpression` in the program, asks the checker for the literal's contextual type, and reports all literals whose contextual type resolves back to the cursor symbol. Results appear in VSCode's References panel.
+Adds a command, **Find Type Constructions**, that operates on the interface or type alias under the cursor. It loads a `ts.Program` from the nearest `tsconfig.json`, walks every `ObjectLiteralExpression` in the program, asks the checker for the literal's contextual type, and reports all literals whose contextual type resolves back to the cursor symbol. Results appear in VSCode's References panel.
 
 Union and intersection constituents are checked as well, so a literal typed against `Foo | null` is still reported as a construction of `Foo`.
 
 ## Usage
 
 1. Put your cursor on the name of an interface or type alias.
-2. Run **Find Interface Constructions** from the command palette (Cmd+Shift+P) or the editor context menu.
+2. Run **Find Type Constructions** from the command palette (Cmd+Shift+P) or the editor context menu.
 3. Browse hits in the References panel.
 
 ## Installation
@@ -33,8 +33,8 @@ This extension is not published to the marketplace. Install it from source:
 
 ```sh
 # 1. Clone and enter this repo.
-git clone <this-repo-url> find-interface-constructions
-cd find-interface-constructions
+git clone <this-repo-url> find-type-constructions
+cd find-type-constructions
 
 # 2. Install dependencies and compile.
 npm install
@@ -42,15 +42,15 @@ npm run compile
 
 # 3. Package into a .vsix.
 npm install -g @vscode/vsce   # one-time
-vsce package                   # produces find-interface-constructions-0.0.1.vsix
+vsce package                   # produces find-type-constructions-0.0.1.vsix
 
 # 4. Install into VSCode.
-code --install-extension find-interface-constructions-0.0.1.vsix
+code --install-extension find-type-constructions-0.0.1.vsix
 ```
 
 Alternatively, install from the VSCode UI: open the Extensions view (Cmd+Shift+X), click the `...` menu in the top-right, choose **Install from VSIX...**, and select the `.vsix` file produced in step 3.
 
-After installation, reload VSCode (Cmd+Shift+P → **Developer: Reload Window**). The command **Find Interface Constructions** is then available from the command palette and the editor context menu on `.ts` / `.tsx` files.
+After installation, reload VSCode (Cmd+Shift+P → **Developer: Reload Window**). The command **Find Type Constructions** is then available from the command palette and the editor context menu on `.ts` / `.tsx` files.
 
 ## Development
 
