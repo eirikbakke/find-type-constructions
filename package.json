@@ -4,6 +4,10 @@
   "description": "Find all object literals assignable to the interface or type under the cursor.",
   "version": "0.0.1",
   "publisher": "local",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eirikbakke/find-type-constructions.git"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
