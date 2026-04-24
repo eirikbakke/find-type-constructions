@@ -31,6 +31,23 @@
           "group": "navigation@100"
         }
       ]
+    },
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "find-type-constructions",
+          "title": "Type Constructions",
+          "icon": "resources/panel-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "find-type-constructions": [
+        {
+          "id": "find-type-constructions.results",
+          "name": "Type Constructions"
+        }
+      ]
     }
   },
   "scripts": {

@@ -3,9 +3,24 @@ import * as ts from "typescript";
 import * as path from "path";
 import * as fs from "fs";
 
+const VIEW_ID = "find-type-constructions.results";
+
+let resultsProvider: ConstructionsProvider | undefined;
+let resultsTreeView: vscode.TreeView<TreeNode> | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
+  resultsProvider = new ConstructionsProvider();
+  resultsTreeView = vscode.window.createTreeView(VIEW_ID, {
+    treeDataProvider: resultsProvider,
+    showCollapseAll: true,
+  });
   context.subscriptions.push(
-    vscode.commands.registerCommand("find-type-constructions.find", runCommand)
+    resultsTreeView,
+    vscode.commands.registerCommand("find-type-constructions.find", runCommand),
+    vscode.commands.registerCommand(
+      "find-type-constructions.openLocation",
+      openLocation
+    )
   );
 }
 
@@ -51,18 +66,13 @@ async function runCommand() {
           );
           return;
         }
-        if (result.locations.length === 0) {
+        resultsProvider?.setResults(result.name, result.constructions);
+        await vscode.commands.executeCommand(`${VIEW_ID}.focus`);
+        if (result.constructions.length === 0) {
           vscode.window.showInformationMessage(
             `No constructions found for '${result.name}'.`
           );
-          return;
         }
-        await vscode.commands.executeCommand(
-          "editor.action.showReferences",
-          doc.uri,
-          editor.selection.active,
-          result.locations
-        );
       } catch (e) {
         vscode.window.showErrorMessage(
           `Find Type Constructions: ${(e as Error).message}`
@@ -70,6 +80,14 @@ async function runCommand() {
       }
     }
   );
+}
+
+async function openLocation(location: vscode.Location) {
+  const doc = await vscode.workspace.openTextDocument(location.uri);
+  await vscode.window.showTextDocument(doc, {
+    selection: location.range,
+    preserveFocus: false,
+  });
 }
 
 function findTsConfig(fromPath: string): string | undefined {
@@ -145,9 +163,14 @@ function createProgram(tsconfigPath: string): ts.Program {
   return ts.createProgram(programOptions);
 }
 
+interface Construction {
+  location: vscode.Location;
+  preview: string;
+}
+
 type FindResult =
   | { kind: "error"; message: string }
-  | { kind: "ok"; name: string; locations: vscode.Location[] };
+  | { kind: "ok"; name: string; constructions: Construction[] };
 
 function findConstructions(
   tsconfigPath: string,
@@ -201,7 +224,7 @@ function findConstructions(
   }
 
   const targetDecls = new Set<ts.Declaration>(symbol.declarations);
-  const locations: vscode.Location[] = [];
+  const constructions: Construction[] = [];
 
   for (const sf of program.getSourceFiles()) {
     if (sf.isDeclarationFile) continue;
@@ -211,8 +234,8 @@ function findConstructions(
         if (t && typeMatches(t, targetDecls)) {
           const start = sf.getLineAndCharacterOfPosition(node.getStart(sf));
           const end = sf.getLineAndCharacterOfPosition(node.getEnd());
-          locations.push(
-            new vscode.Location(
+          constructions.push({
+            location: new vscode.Location(
               vscode.Uri.file(sf.fileName),
               new vscode.Range(
                 start.line,
@@ -220,8 +243,9 @@ function findConstructions(
                 end.line,
                 end.character
               )
-            )
-          );
+            ),
+            preview: getLinePreview(sf, start.line),
+          });
         }
       }
       ts.forEachChild(node, visit);
@@ -229,7 +253,14 @@ function findConstructions(
     visit(sf);
   }
 
-  return { kind: "ok", name: token.text, locations };
+  return { kind: "ok", name: token.text, constructions };
+}
+
+function getLinePreview(sf: ts.SourceFile, line: number): string {
+  const starts = sf.getLineStarts();
+  const from = starts[line];
+  const to = line + 1 < starts.length ? starts[line + 1] : sf.text.length;
+  return sf.text.slice(from, to).replace(/\s+$/, "").trim();
 }
 
 function typeMatches(type: ts.Type, targetDecls: Set<ts.Declaration>): boolean {
@@ -265,4 +296,84 @@ function findTokenAtPosition(
     return node;
   };
   return find(sf);
+}
+
+interface FileNode {
+  kind: "file";
+  uri: vscode.Uri;
+  constructions: Construction[];
+}
+
+interface ConstructionNode {
+  kind: "construction";
+  construction: Construction;
+}
+
+type TreeNode = FileNode | ConstructionNode;
+
+class ConstructionsProvider implements vscode.TreeDataProvider<TreeNode> {
+  private readonly emitter = new vscode.EventEmitter<TreeNode | undefined>();
+  readonly onDidChangeTreeData = this.emitter.event;
+
+  private fileNodes: FileNode[] = [];
+
+  setResults(typeName: string, constructions: Construction[]) {
+    const byFile = new Map<string, FileNode>();
+    for (const c of constructions) {
+      const key = c.location.uri.toString();
+      let node = byFile.get(key);
+      if (!node) {
+        node = { kind: "file", uri: c.location.uri, constructions: [] };
+        byFile.set(key, node);
+      }
+      node.constructions.push(c);
+    }
+    this.fileNodes = [...byFile.values()].sort((a, b) =>
+      a.uri.fsPath.localeCompare(b.uri.fsPath)
+    );
+    if (resultsTreeView) {
+      const total = constructions.length;
+      resultsTreeView.message =
+        total === 0
+          ? `No constructions found for '${typeName}'.`
+          : `${total.toString()} construction${total === 1 ? "" : "s"} of '${typeName}' in ${this.fileNodes.length.toString()} file${this.fileNodes.length === 1 ? "" : "s"}.`;
+    }
+    this.emitter.fire(undefined);
+  }
+
+  getTreeItem(node: TreeNode): vscode.TreeItem {
+    if (node.kind === "file") {
+      const item = new vscode.TreeItem(
+        path.basename(node.uri.fsPath),
+        vscode.TreeItemCollapsibleState.Expanded
+      );
+      item.resourceUri = node.uri;
+      item.description = vscode.workspace.asRelativePath(node.uri, false);
+      item.iconPath = vscode.ThemeIcon.File;
+      item.tooltip = node.uri.fsPath;
+      return item;
+    }
+    const c = node.construction;
+    const line = c.location.range.start.line + 1;
+    const col = c.location.range.start.character + 1;
+    const item = new vscode.TreeItem(c.preview);
+    item.description = `${line.toString()}:${col.toString()}`;
+    item.tooltip = `${c.location.uri.fsPath}:${line.toString()}:${col.toString()}`;
+    item.command = {
+      command: "find-type-constructions.openLocation",
+      title: "Open",
+      arguments: [c.location],
+    };
+    return item;
+  }
+
+  getChildren(node?: TreeNode): TreeNode[] {
+    if (!node) return this.fileNodes;
+    if (node.kind === "file") {
+      return node.constructions.map(
+        (c): ConstructionNode => ({ kind: "construction", construction: c })
+      );
+    }
+    return [];
+  }
 }
