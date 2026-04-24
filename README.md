@@ -65,9 +65,9 @@ npm run compile
 
 Then open this folder in VSCode and press **F5** to launch an Extension Development Host with the plugin loaded — no packaging or install needed.
 
-## Rebuilding and reinstalling
+### Rebuilding and reinstalling
 
-After making code changes, rebuild and reinstall the packaged extension into your main VSCode:
+Also only relevant while developing the plugin itself. If you prefer to test changes in your main VSCode (rather than the Extension Development Host launched with F5), rebuild and reinstall the packaged extension:
 
 ```sh
 npm run compile
