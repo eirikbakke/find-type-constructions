@@ -65,6 +65,8 @@ npm run compile
 
 Then open this folder in VSCode and press **F5** to launch an Extension Development Host with the plugin loaded — no packaging or install needed.
 
+Run the test suite with `npm test` (or `npm run check` for typecheck + lint + format + test in one go).
+
 ### Rebuilding and reinstalling
 
 Also only relevant while developing the plugin itself. If you prefer to test changes in your main VSCode (rather than the Extension Development Host launched with F5), rebuild and reinstall the packaged extension:

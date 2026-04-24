@@ -4,7 +4,7 @@ import prettierConfig from "eslint-config-prettier";
 
 export default tseslint.config(
   {
-    ignores: ["out/", "node_modules/"],
+    ignores: ["out/", "node_modules/", "src/tests/fixtures/"],
   },
   eslint.configs.recommended,
   {

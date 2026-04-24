@@ -1,0 +1,13 @@
+.vscode/**
+.git/**
+.gitignore
+.prettierrc.json
+.prettierignore
+eslint.config.mjs
+tsconfig.json
+CLAUDE.md
+src/**
+**/*.map
+**/*.ts
+!out/**/*.js
+node_modules/.bin/**
