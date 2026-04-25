@@ -2,7 +2,7 @@
 
 A VSCode extension for TypeScript. Place the cursor on an interface, type alias, or class — or any reference to one (an import, a type annotation, a generic argument) — and the command reports the places in the project where a value of that type is constructed: object literals assigned to it, `new` expressions, and JSX call sites whose props match.
 
-It addresses two specific gaps in VSCode's built-in navigation: there is no "Go to Implementations" that works for interfaces, and "Find All References" returns every mention of the name (imports, parameter annotations, JSDoc) rather than just the construction sites.
+It addresses two specific gaps in VSCode's built-in navigation: there is no "Go to Implementations" that works for interfaces, and "Find All References" doesn't include construction sites for interfaces at all — the construction is an object literal whose contextual type happens to be the interface, with no textual mention of the interface name for the reference search to find.
 
 > **Note:** This plugin was written entirely by [Claude Code](https://claude.com/claude-code) under the guidance of Eirik Bakke.
 
@@ -19,7 +19,7 @@ A few situations where this is more convenient than the built-in commands:
 
 TypeScript is structurally typed: an object becomes a value of an interface type by having the right shape at an assignment site, with no syntactic construction marker. The built-in commands handle this differently than one might expect:
 
-- **Find All References** (Shift+F12) returns every textual mention of the name — imports, parameter annotations, return-type annotations, JSDoc — and so doesn't directly surface the construction sites. When a function declares its return type as an interface and returns an object literal, the interface name appears only at the function's signature, never at the `return` statement that produces the literal.
+- **Find All References** (Shift+F12) is a textual reference search: it returns every mention of the interface name (imports, parameter annotations, return-type annotations, JSDoc) but never the construction sites themselves, because a construction is just an object literal with no textual mention of the interface name. When a function declares its return type as an interface and returns an object literal, the interface name appears only at the function's signature; the `return` statement that produces the literal is invisible to Find All References.
 - **Go to Implementations** (Cmd+F12) reports "No implementations found" for interfaces. TypeScript tracks implementations only for classes, so interfaces, type aliases, and React `Props` types return nothing.
 - **Workspace text search** (Cmd+Shift+F) for `: TypeName` or `<TypeName` finds explicit annotations but not constructions whose type is inferred from context (object literals positioned as function arguments or array elements, JSX call sites, returns from typed functions).
 

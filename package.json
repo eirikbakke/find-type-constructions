@@ -1,7 +1,7 @@
 {
   "name": "find-type-constructions",
   "displayName": "Find Type Constructions",
-  "description": "Find places where a TypeScript interface, type alias, or class is constructed: object literals assigned to the type, `new` expressions, and JSX call sites whose props match. Addresses gaps in 'Go to Implementations' (no support for interfaces) and 'Find All References' (returns every mention, not just constructions).",
+  "description": "Find places where a TypeScript interface, type alias, or class is constructed: object literals assigned to the type, `new` expressions, and JSX call sites whose props match. Addresses gaps in 'Go to Implementations' (no support for interfaces) and 'Find All References' (which never includes interface construction sites, since the construction is an object literal with no textual mention of the interface name).",
   "keywords": [
     "typescript",
     "interface",
