@@ -264,13 +264,27 @@ function findTokenAtPosition(
   sf: ts.SourceFile,
   offset: number
 ): ts.Node | undefined {
-  const find = (node: ts.Node): ts.Node | undefined => {
-    if (offset < node.getStart(sf) || offset > node.getEnd()) return undefined;
-    for (const child of node.getChildren(sf)) {
-      const hit = find(child);
-      if (hit) return hit;
+  // Collect every leaf token whose range contains the offset (inclusive
+  // on both ends). When the cursor sits exactly at a token boundary —
+  // e.g., between `<` and `Foo` in `take<Foo>(...)` — both the
+  // punctuation and the identifier match. Prefer an identifier whose
+  // start equals the offset (the "rightward" word the user clicked
+  // toward); fall back to any identifier; fall back to the first leaf.
+  const leaves: ts.Node[] = [];
+  const collect = (node: ts.Node): void => {
+    if (offset < node.getStart(sf) || offset > node.getEnd()) return;
+    const children = node.getChildren(sf);
+    if (children.length === 0) {
+      leaves.push(node);
+      return;
     }
-    return node;
+    for (const c of children) collect(c);
   };
-  return find(sf);
+  collect(sf);
+  if (leaves.length === 0) return undefined;
+  return (
+    leaves.find((l) => ts.isIdentifier(l) && l.getStart(sf) === offset) ??
+    leaves.find((l) => ts.isIdentifier(l)) ??
+    leaves[0]
+  );
 }

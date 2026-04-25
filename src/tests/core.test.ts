@@ -187,6 +187,30 @@ describe("findConstructions — matching", () => {
     );
   });
 
+  it("resolves the identifier when the cursor sits exactly at its start (boundary with the previous token)", () => {
+    // Regression: in `take<Foo>(...)` the cursor offset for "just left
+    // of `Foo`" equals the start of `Foo` and the end of `<`. The token
+    // walker visited children in source order and committed to `<`
+    // (a punctuation token) before considering the identifier, so the
+    // command refused with "Cursor is on a FirstBinaryOperator". Real
+    // users hit this when single-clicking at a word boundary. The
+    // walker now prefers identifier candidates at boundary positions.
+    const file = path.join(SIMPLE, "generics.ts");
+    const text = fs.readFileSync(file, "utf8");
+    const callLine = text.indexOf("take<Foo>");
+    const idStart = text.indexOf("Foo", callLine);
+    const result = findConstructions(tsconfig, file, idStart);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.name, "Foo");
+    // The fixture's call site contains an object-literal construction
+    // of Foo via the generic argument.
+    const previews = result.constructions.map((c) => c.preview);
+    assert.ok(
+      previews.some((p) => p.includes("take<Foo>({ a: 99 })")),
+      `missing generic-arg construction; got: ${previews.join(" | ")}`
+    );
+  });
+
   it("matches an interface with only one construction site", () => {
     const offset = offsetOfIdentifier(
       typesFile,
