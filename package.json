@@ -1,7 +1,7 @@
 {
   "name": "find-type-constructions",
   "displayName": "Find Type Constructions",
-  "description": "Find all object literals assignable to the interface or type under the cursor.",
+  "description": "Find all construction sites — object literals and `new` expressions — for the interface, type alias, or class under the cursor.",
   "version": "0.0.1",
   "publisher": "local",
   "repository": {

@@ -127,7 +127,10 @@ export function findConstructions(
   }
 
   const isTypeSymbol = symbol.declarations.some(
-    (d) => ts.isInterfaceDeclaration(d) || ts.isTypeAliasDeclaration(d)
+    (d) =>
+      ts.isInterfaceDeclaration(d) ||
+      ts.isTypeAliasDeclaration(d) ||
+      ts.isClassDeclaration(d)
   );
   if (!isTypeSymbol) {
     const kinds = symbol.declarations
@@ -135,7 +138,7 @@ export function findConstructions(
       .join(", ");
     return {
       kind: "error",
-      message: `Symbol '${token.text}' is not an interface or type alias (declarations: ${kinds}).`,
+      message: `Symbol '${token.text}' is not an interface, type alias, or class (declarations: ${kinds}).`,
     };
   }
 
@@ -144,21 +147,28 @@ export function findConstructions(
 
   for (const sf of program.getSourceFiles()) {
     if (sf.isDeclarationFile) continue;
+    const record = (node: ts.Node) => {
+      const start = sf.getLineAndCharacterOfPosition(node.getStart(sf));
+      const end = sf.getLineAndCharacterOfPosition(node.getEnd());
+      constructions.push({
+        file: sf.fileName,
+        startLine: start.line,
+        startCharacter: start.character,
+        endLine: end.line,
+        endCharacter: end.character,
+        preview: getLinePreview(sf, start.line),
+      });
+    };
     const visit = (node: ts.Node) => {
       if (ts.isObjectLiteralExpression(node)) {
         const t = checker.getContextualType(node);
-        if (t && typeMatches(t, targetDecls, checker)) {
-          const start = sf.getLineAndCharacterOfPosition(node.getStart(sf));
-          const end = sf.getLineAndCharacterOfPosition(node.getEnd());
-          constructions.push({
-            file: sf.fileName,
-            startLine: start.line,
-            startCharacter: start.character,
-            endLine: end.line,
-            endCharacter: end.character,
-            preview: getLinePreview(sf, start.line),
-          });
-        }
+        if (t && typeMatches(t, targetDecls, checker)) record(node);
+      } else if (ts.isNewExpression(node)) {
+        // The instance type of `new X(...)` — matches when X (or a subtype)
+        // is the cursor symbol. Covers constructor-var globals like
+        // ResizeObserver/Map/Set as well as plain classes.
+        const t = checker.getTypeAtLocation(node);
+        if (typeMatches(t, targetDecls, checker)) record(node);
       }
       ts.forEachChild(node, visit);
     };

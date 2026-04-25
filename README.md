@@ -1,31 +1,36 @@
 # Find Type Constructions
 
-A VSCode extension that finds every place where an object literal is constructed satisfying the TypeScript interface (or type alias) under the cursor.
+A VSCode extension that finds every place where a value of the TypeScript interface, type alias, or class under the cursor is constructed — both object literals (`{ ... }`) typed against the symbol and `new X(...)` expressions whose result is a value of that type.
 
 > **Note:** This plugin was written entirely by [Claude Code](https://claude.com/claude-code) under the guidance of Eirik Bakke.
 
 ## Motivation
 
-TypeScript's type system is structural: an object becomes a value of interface type simply by having the right shape at an assignment site. There is no syntactic `new Foo(...)` marker, so neither tsserver nor VSCode can enumerate the places where an interface is constructed.
+TypeScript's type system is structural: an object becomes a value of interface type simply by having the right shape at an assignment site, with no syntactic construction marker. And while `new Foo(...)` _is_ a syntactic marker, neither tsserver nor VSCode lets you enumerate every `new` site for a given type. So whether the type is constructed via object literals, `new` expressions, or both, the standard navigation falls short.
 
 In practice this means that when you want to add a field to an interface and update every construction site, the standard VSCode commands don't help:
 
 - **Find All References** (Shift+F12) returns every mention of the name — imports, parameter annotations, return-type annotations, etc. — and typically misses the actual construction sites entirely. When a function declares its return type as an interface and returns an object literal, the interface name appears only at the function's signature, never at the `return` statement that produces the literal, so Find All References does not surface the construction at all.
 - **Go to Implementations** (Cmd+F12) reports "No implementations found" for interfaces, because implementations are only tracked for classes.
 
-The information does exist inside the TypeScript compiler: at every object literal, the checker computes a contextual type and verifies assignability. It is simply not surfaced through tsserver.
+The information does exist inside the TypeScript compiler: at every object literal the checker computes a contextual type, and at every `new` expression it computes the constructed instance type. It is simply not surfaced through tsserver.
 
 This extension exposes it.
 
 ## What it does
 
-Adds a command, **Find Type Constructions**, that operates on the interface or type alias under the cursor. It loads a `ts.Program` from the nearest `tsconfig.json`, walks every `ObjectLiteralExpression` in the program, asks the checker for the literal's contextual type, and reports all literals whose contextual type resolves back to the cursor symbol. Results appear in VSCode's References panel.
+Adds a command, **Find Type Constructions**, that operates on the interface, type alias, or class under the cursor. It loads a `ts.Program` from the nearest `tsconfig.json` and walks every source file, reporting two kinds of construction sites:
 
-Union and intersection constituents are checked as well, so a literal typed against `Foo | null` is still reported as a construction of `Foo`.
+- Every `ObjectLiteralExpression` whose contextual type resolves back to the cursor symbol.
+- Every `NewExpression` whose constructed instance type resolves back to the cursor symbol — covering plain class constructions as well as constructor-var globals like `ResizeObserver`, `Map`, and `Set`, where the lib declares an interface merged with a `var` whose value is a constructor.
+
+Results appear in a dedicated panel view.
+
+Union and intersection constituents and `extends` chains are walked as well, so a literal typed against `Foo | null` or against a subtype of `Foo` is still reported as a construction of `Foo`.
 
 ## Usage
 
-1. Put your cursor on the name of an interface or type alias.
+1. Put your cursor on the name of an interface, type alias, or class.
 2. Run **Find Type Constructions** from the command palette (Cmd+Shift+P) or the editor context menu.
 3. Browse hits in the References panel.
 

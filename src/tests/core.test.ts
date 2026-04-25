@@ -14,6 +14,7 @@ import {
 const FIXTURES = path.resolve(__dirname, "fixtures");
 const SIMPLE = path.join(FIXTURES, "simple");
 const REFS = path.join(FIXTURES, "project-refs");
+const NEWS = path.join(FIXTURES, "news");
 
 function offsetOfIdentifier(
   file: string,
@@ -126,6 +127,55 @@ describe("findConstructions — matching", () => {
   });
 });
 
+describe("findConstructions — new-expressions", () => {
+  const tsconfig = path.join(NEWS, "tsconfig.json");
+  const typesFile = path.join(NEWS, "types.ts");
+
+  it("matches `new` constructions of an interface merged with a constructor var (the ResizeObserver pattern)", () => {
+    const offset = offsetOfIdentifier(
+      typesFile,
+      "export interface Widget",
+      "Widget"
+    );
+    const result = findConstructions(tsconfig, typesFile, offset);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.name, "Widget");
+    const previews = result.constructions.map((c) => c.preview);
+    assert.ok(
+      previews.some((p) => p.includes("new Widget(")),
+      `missing new-expression match; got: ${previews.join(" | ")}`
+    );
+    // Must not cross-contaminate with the unrelated Gadget class.
+    assert.ok(!previews.some((p) => p.includes("new Gadget(")));
+  });
+
+  it("matches `new` constructions of a class declaration", () => {
+    const offset = offsetOfIdentifier(
+      typesFile,
+      "export class Gadget",
+      "Gadget"
+    );
+    const result = findConstructions(tsconfig, typesFile, offset);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.name, "Gadget");
+    const previews = result.constructions.map((c) => c.preview);
+    assert.deepEqual(previews, [
+      'export const gadgetConstruction = new Gadget("hello");',
+    ]);
+  });
+
+  it("returns no results for an interface that is never constructed", () => {
+    const offset = offsetOfIdentifier(
+      typesFile,
+      "export interface Unused",
+      "Unused"
+    );
+    const result = findConstructions(tsconfig, typesFile, offset);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.constructions.length, 0);
+  });
+});
+
 describe("findConstructions — error paths", () => {
   const tsconfig = path.join(SIMPLE, "tsconfig.json");
 
@@ -138,7 +188,7 @@ describe("findConstructions — error paths", () => {
     );
     const result = findConstructions(tsconfig, usesFile, offset);
     assert.equal(result.kind, "error");
-    assert.match(result.message, /not an interface or type alias/);
+    assert.match(result.message, /not an interface, type alias, or class/);
   });
 
   it("reports when the file is not part of the program", () => {
