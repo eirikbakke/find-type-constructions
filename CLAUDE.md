@@ -8,6 +8,8 @@ In this repository, Claude should commit its own changes automatically as it wor
 
 After making changes — before reporting a task as done and before committing — always run `npm run check`, which includes `npm run test`. If a change plausibly affects behaviour the tests don't cover, add or extend a test first. A green test suite is part of the definition of "change is complete" in this repo.
 
+**Every bug fix gets a regression test.** When the user reports a bug — even a small one, even an obvious one — add a test that would have caught it before changing any production code. The test should fail on the current (buggy) implementation and pass after the fix. No exceptions. If the bug can't be reproduced, do not invent a fix; report what you observed and ask for more information instead.
+
 ## What this project is
 
 A small VSCode extension that adds a command, **Find Type Constructions**, for TypeScript code. Given the interface, type alias, or class under the cursor, it enumerates every place in the program where a value of that type is constructed — both object literals (`{ ... }`) whose contextual type resolves to the symbol, and `new X(...)` expressions whose instance type resolves to the symbol.
