@@ -1,7 +1,24 @@
 {
   "name": "find-type-constructions",
   "displayName": "Find Type Constructions",
-  "description": "Find all construction sites — object literals and `new` expressions — for the interface, type alias, or class under the cursor.",
+  "description": "Find places where a TypeScript interface, type alias, or class is constructed: object literals assigned to the type, `new` expressions, and JSX call sites whose props match. Addresses gaps in 'Go to Implementations' (no support for interfaces) and 'Find All References' (returns every mention, not just constructions).",
+  "keywords": [
+    "typescript",
+    "interface",
+    "type",
+    "class",
+    "react",
+    "props",
+    "find references",
+    "go to implementation",
+    "object literal",
+    "new expression",
+    "jsx",
+    "construction",
+    "instantiation",
+    "structural typing",
+    "refactoring"
+  ],
   "version": "0.0.1",
   "publisher": "local",
   "repository": {

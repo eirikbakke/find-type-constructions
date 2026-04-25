@@ -21,14 +21,16 @@ TypeScript is structurally typed, so object literals become values of an interfa
 - **Find All References** returns every mention of the name — imports, parameter annotations, return-type annotations — and typically misses the actual construction sites entirely. The interface name often appears only at a function's signature, never at the `return` statement that produces the literal.
 - **Go to Implementations** is defined only for classes and reports "No implementations found" for interfaces.
 
-The TypeScript checker internally knows the contextual type at every object literal and the instance type of every `new` expression, but tsserver does not expose this. This extension bridges the gap by running its own `ts.Program` over the nearest `tsconfig.json` and querying `checker.getContextualType` at every `ObjectLiteralExpression` and `checker.getTypeAtLocation` at every `NewExpression`.
+The TypeScript checker internally knows the contextual type at every object literal, the instance type of every `new` expression, and the props type at every JSX call site, but tsserver does not expose this. This extension bridges the gap by running its own `ts.Program` over the nearest `tsconfig.json` and querying the checker at each of those positions.
 
 ## Architecture
 
-- `src/extension.ts` — the whole extension. Registers one command, `find-type-constructions.find`.
-- The command resolves the symbol under the cursor, verifies it is an `InterfaceDeclaration`, `TypeAliasDeclaration`, or `ClassDeclaration`, then walks every source file in the program. For each `ObjectLiteralExpression` it compares the contextual type's symbol declarations against the target; for each `NewExpression` it does the same with the constructed instance type; for each `JsxOpeningElement`/`JsxSelfClosingElement` it does the same with the contextual type of the attributes node. The `new`-expression branch surfaces constructor-var globals like `ResizeObserver`/`Map`/`Set` (interface merged with a `var` whose value is a constructor) as well as plain class constructions; the JSX branch surfaces `<Component ... />` usages, which is the most common construction site for a React `Props` interface.
-- Union and intersection types are walked constituent-by-constituent so literals typed against `Foo | null` still match `Foo`.
-- Results are shown via the `editor.action.showReferences` command, which uses VSCode's References panel.
+- `src/extension.ts` — the whole extension. Registers one command, `find-type-constructions.find`, and owns the `Type Constructions` panel view that shows results grouped by file.
+- Cursor resolution (in `core.ts`): find the leaf token at the cursor — when the cursor sits exactly between two tokens (e.g., between `<` and an identifier in `useState<Foo>`), prefer the identifier on the right. Then call `getSymbolAtLocation` and follow `Alias` chains via `getAliasedSymbol`, so the command works on a type name anywhere it appears (declaration, import specifier, type annotation, generic argument, `new` call, etc.) — not just on its definition site. The resolved symbol must have at least one `InterfaceDeclaration`, `TypeAliasDeclaration`, or `ClassDeclaration` in `declarations`.
+- Source-file walk (per file in the program): for each `ObjectLiteralExpression`, compare the contextual type's symbol declarations against the target set; for each `NewExpression`, do the same with the constructed instance type; for each `JsxOpeningElement`/`JsxSelfClosingElement`, do the same with the contextual type of the attributes node. The `new`-expression branch surfaces constructor-var globals like `ResizeObserver`/`Map`/`Set` (interface merged with a `var` whose value is a constructor) as well as plain class constructions; the JSX branch surfaces `<Component ... />` usages, the most common construction site for a React `Props` interface.
+- Union and intersection types are walked constituent-by-constituent so literals typed against `Foo | null` still match `Foo`, and JSX attribute-bag types of shape `IntrinsicAttributes & Props` still match `Props`.
+- File-path comparison (used both to pick the right tsconfig from a solution-style `references` set and to find the active source file inside the program) is case-insensitive when `ts.sys.useCaseSensitiveFileNames` is false, since macOS APFS / Windows NTFS may hand us a path whose casing differs from what `parseJsonConfigFileContent` returned.
+- Results are rendered into the dedicated `Type Constructions` view (a tree of file → construction nodes); clicking a node opens the file at the matched range.
 
 ## Build
 
@@ -60,7 +62,14 @@ npm run test         # node --test on src/tests/*.test.ts via tsx
 
 ## Tests
 
-Pure logic lives in `src/core.ts` so it can be exercised without a VSCode host. Tests in `src/tests/core.test.ts` use the Node built-in `node:test` runner against fixture TypeScript projects under `src/tests/fixtures/`. The `simple/` fixture covers identity / union / extends-chain matching and error paths; `project-refs/` covers solution-style tsconfigs with `references`; `news/` covers `new`-expression matching of classes and the `ResizeObserver`-style interface-plus-constructor-var merge; `jsx-props/` covers `<Component ... />` JSX usages as constructions of the props interface, with a minimal hand-rolled JSX shim so the fixture doesn't pull in React. `src/tests/vscodeignore.test.ts` separately pins the packaging rules — see "Packaging gotchas" below.
+Pure logic lives in `src/core.ts` so it can be exercised without a VSCode host. Tests in `src/tests/core.test.ts` use the Node built-in `node:test` runner against fixture TypeScript projects under `src/tests/fixtures/`:
+
+- `simple/` — identity / union / extends-chain matching, type aliases, return-statement literals, `.push`-onto-typed-array, array-literal elements, generic factory callbacks, nested-property contextual typing, alias-following on import specifiers, cursor-on-use-position annotations, cursor-at-token-boundary resolution, and the cursor-not-on-a-type error path.
+- `project-refs/` — solution-style tsconfigs with `references`.
+- `news/` — `new`-expression matching of classes and the `ResizeObserver`-style interface-plus-constructor-var merge, including cursor on type-position annotations of both flavours.
+- `jsx-props/` — `<Component ... />` JSX usages as constructions of the props interface, with a minimal hand-rolled JSX shim so the fixture doesn't pull in React.
+
+`src/tests/vscodeignore.test.ts` separately pins the packaging rules — see "Packaging gotchas" below.
 
 When adding a new behaviour, add a test that pins it. When fixing a bug, add a test that would have caught it.
 
@@ -79,3 +88,5 @@ The packaged VSIX bundles its own `typescript` dependency, which loads `lib.dom.
 - The extension creates its own `ts.Program` rather than going through tsserver, because tsserver does not expose `getContextualType` to clients. This means a second type-check pass runs when the command is invoked; acceptable for an on-demand command.
 - Matching follows `extends` chains: a literal typed against a subtype of the cursor interface is reported too, since adding a required field to the base forces every subtype literal to supply it as well.
 - Matching is by declaration identity (`Set<ts.Declaration>`), not by name, so interfaces with colliding names in different modules do not cross-contaminate.
+- Only syntactic constructions are surfaced: `ObjectLiteralExpression`, `NewExpression`, and JSX call sites. Factory functions returning a value of the type (`Promise.resolve`, `Array.from`, custom builders) are deliberately ignored — there is no general way to know which calls produce the type without arbitrary domain knowledge, and surfacing every method call whose return type matches would drown out the real constructions.
+- String- and number-union type aliases (`type X = "a" | "b"`) report no constructions, because string and number literals are not syntactic constructions of the alias. This is a known and accepted limitation.
