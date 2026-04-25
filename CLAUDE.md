@@ -64,6 +64,8 @@ Pure logic lives in `src/core.ts` so it can be exercised without a VSCode host. 
 
 When adding a new behaviour, add a test that pins it. When fixing a bug, add a test that would have caught it.
 
+When a bug is reproduced from a real-life codebase, the fixture must be a minimal abstraction that captures only the structural pattern at issue — never a copy or near-copy of the user's code. Rename interfaces, properties, components, and variables to neutral names (`Widget`, `Greeting`, `Foo`, etc.); strip every comment, every business detail, every property unrelated to the bug; reduce the example to the smallest construct that still triggers the failure. The user's filenames, type names, and field names should be unrecognizable in the fixture. This keeps tests readable as standalone specifications and avoids accidentally embedding proprietary code in the test suite.
+
 Configuration lives in `tsconfig.json` (compiler strictness), `eslint.config.mjs` (lint rules and type-aware config), `.prettierrc.json` (formatting), and `.prettierignore`.
 
 Type-aware lint rules require a working `tsconfig.json`; if you add new top-level files that should be linted, include them in `tsconfig.json` or add a scoped ESLint block in `eslint.config.mjs`.
