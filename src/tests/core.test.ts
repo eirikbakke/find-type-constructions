@@ -8,6 +8,7 @@ import * as fs from "fs";
 import {
   findConstructions,
   findTsConfig,
+  pathsEqual,
   resolveTsconfigForFile,
 } from "../core";
 
@@ -15,6 +16,14 @@ const FIXTURES = path.resolve(__dirname, "fixtures");
 const SIMPLE = path.join(FIXTURES, "simple");
 const REFS = path.join(FIXTURES, "project-refs");
 const NEWS = path.join(FIXTURES, "news");
+
+// Toggle the case of every alphabetic character in a path so we can
+// simulate a case-insensitive filesystem handing us mismatched casing.
+function mangleCase(p: string): string {
+  return p.replace(/[A-Za-z]/g, (ch) =>
+    ch === ch.toUpperCase() ? ch.toLowerCase() : ch.toUpperCase()
+  );
+}
 
 function offsetOfIdentifier(
   file: string,
@@ -68,6 +77,44 @@ describe("resolveTsconfigForFile", () => {
     const rootTsconfig = path.join(REFS, "tsconfig.json");
     const outside = path.join(SIMPLE, "uses.ts");
     assert.equal(resolveTsconfigForFile(rootTsconfig, outside), undefined);
+  });
+
+  it("matches case-mangled file paths on a case-insensitive filesystem", () => {
+    // Regression: on macOS APFS / Windows NTFS (case-insensitive by default),
+    // VSCode is free to hand us a path whose casing differs from what
+    // `parseJsonConfigFileContent` returns. Exact string comparison made the
+    // walk fail for such files, with the misleading "Active file is not
+    // included by ..." error. Force `caseSensitive: false` so the test runs
+    // identically on Linux CI.
+    const rootTsconfig = path.join(REFS, "tsconfig.json");
+    const file = path.join(REFS, "sub", "types.ts");
+    const mangled = mangleCase(file);
+    assert.notEqual(mangled, file, "fixture should actually differ in case");
+    assert.equal(
+      resolveTsconfigForFile(rootTsconfig, mangled, false),
+      path.join(REFS, "sub", "tsconfig.json")
+    );
+    // And the case-sensitive path still rejects it (sanity check).
+    assert.equal(
+      resolveTsconfigForFile(rootTsconfig, mangled, true),
+      undefined
+    );
+  });
+});
+
+describe("pathsEqual", () => {
+  it("compares exactly when caseSensitive is true", () => {
+    assert.ok(pathsEqual("/a/b/c.ts", "/a/b/c.ts", true));
+    assert.ok(!pathsEqual("/a/b/c.ts", "/A/b/c.ts", true));
+  });
+
+  it("ignores case when caseSensitive is false", () => {
+    assert.ok(pathsEqual("/a/b/c.ts", "/A/B/C.TS", false));
+    assert.ok(!pathsEqual("/a/b/c.ts", "/a/b/d.ts", false));
+  });
+
+  it("normalizes redundant path segments before comparing", () => {
+    assert.ok(pathsEqual("/a/b/../b/c.ts", "/a/b/c.ts", true));
   });
 });
 
@@ -196,6 +243,16 @@ describe("findConstructions — error paths", () => {
     const result = findConstructions(tsconfig, outside, 0);
     assert.equal(result.kind, "error");
     assert.match(result.message, /not part of the program/);
+  });
+
+  it("finds the source file when its path differs in case (case-insensitive FS)", () => {
+    const typesFile = path.join(SIMPLE, "types.ts");
+    const offset = offsetOfIdentifier(typesFile, "export interface Foo", "Foo");
+    const mangled = mangleCase(typesFile);
+    const result = findConstructions(tsconfig, mangled, offset, false);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.name, "Foo");
+    assert.ok(result.constructions.length > 0);
   });
 });
 

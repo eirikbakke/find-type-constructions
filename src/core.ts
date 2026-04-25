@@ -38,19 +38,34 @@ function parseTsconfig(tsconfigPath: string): ts.ParsedCommandLine | undefined {
   );
 }
 
+// Compare two file paths the way the host filesystem would. On
+// case-insensitive filesystems (macOS APFS / HFS+ default, Windows NTFS
+// default), `/Users/foo/X.ts` and `/users/foo/x.ts` refer to the same file
+// and must compare equal — VSCode is free to hand us either casing.
+export function pathsEqual(
+  a: string,
+  b: string,
+  caseSensitive: boolean
+): boolean {
+  const na = path.normalize(a);
+  const nb = path.normalize(b);
+  return caseSensitive ? na === nb : na.toLowerCase() === nb.toLowerCase();
+}
+
 export function resolveTsconfigForFile(
   tsconfigPath: string,
-  filePath: string
+  filePath: string,
+  caseSensitive: boolean = ts.sys.useCaseSensitiveFileNames
 ): string | undefined {
-  const normalizedTarget = path.normalize(filePath);
   const visited = new Set<string>();
   const walk = (cfg: string): string | undefined => {
     const resolved = path.normalize(cfg);
-    if (visited.has(resolved)) return undefined;
-    visited.add(resolved);
+    const key = caseSensitive ? resolved : resolved.toLowerCase();
+    if (visited.has(key)) return undefined;
+    visited.add(key);
     const parsed = parseTsconfig(resolved);
     if (!parsed) return undefined;
-    if (parsed.fileNames.some((f) => path.normalize(f) === normalizedTarget)) {
+    if (parsed.fileNames.some((f) => pathsEqual(f, filePath, caseSensitive))) {
       return resolved;
     }
     for (const ref of parsed.projectReferences ?? []) {
@@ -91,15 +106,15 @@ function createProgram(tsconfigPath: string): ts.Program {
 export function findConstructions(
   tsconfigPath: string,
   filePath: string,
-  offset: number
+  offset: number,
+  caseSensitive: boolean = ts.sys.useCaseSensitiveFileNames
 ): FindResult {
   const program = createProgram(tsconfigPath);
   const checker = program.getTypeChecker();
 
-  const normalized = path.normalize(filePath);
   const sourceFile = program
     .getSourceFiles()
-    .find((sf) => path.normalize(sf.fileName) === normalized);
+    .find((sf) => pathsEqual(sf.fileName, filePath, caseSensitive));
   if (!sourceFile) {
     return {
       kind: "error",
