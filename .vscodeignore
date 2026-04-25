@@ -9,5 +9,11 @@ CLAUDE.md
 src/**
 **/*.map
 **/*.ts
+# Re-include `.d.ts` after the broad `**/*.ts` rule above. Critically,
+# `node_modules/typescript/lib/lib.*.d.ts` ships the DOM and ES lib
+# typings the extension's bundled compiler loads at runtime; without
+# them every contextual type collapses to `any` and matching silently
+# returns zero results.
+!**/*.d.ts
 !out/**/*.js
 node_modules/.bin/**

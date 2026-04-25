@@ -70,6 +70,7 @@
     "@types/vscode": "^1.80.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.1.0",
+    "minimatch": "^10.2.5",
     "prettier": "^3.3.0",
     "tsx": "^4.21.0",
     "typescript-eslint": "^8.0.0"
