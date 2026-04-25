@@ -184,6 +184,19 @@ export function findConstructions(
         // ResizeObserver/Map/Set as well as plain classes.
         const t = checker.getTypeAtLocation(node);
         if (typeMatches(t, targetDecls, checker)) record(node);
+      } else if (
+        ts.isJsxOpeningElement(node) ||
+        ts.isJsxSelfClosingElement(node)
+      ) {
+        // A `<Component ... />` site constructs a value of the
+        // component's props interface — usually the most common
+        // construction site for a React Props type, and one that has no
+        // ObjectLiteralExpression to match. The contextual type at the
+        // attributes node is typically `IntrinsicAttributes & Props`;
+        // typeMatches walks the intersection so the Props constituent
+        // matches.
+        const t = checker.getContextualType(node.attributes);
+        if (t && typeMatches(t, targetDecls, checker)) record(node);
       }
       ts.forEachChild(node, visit);
     };

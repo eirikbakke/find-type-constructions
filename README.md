@@ -23,6 +23,7 @@ Adds a command, **Find Type Constructions**, that operates on the interface, typ
 
 - Every `ObjectLiteralExpression` whose contextual type resolves back to the cursor symbol.
 - Every `NewExpression` whose constructed instance type resolves back to the cursor symbol — covering plain class constructions as well as constructor-var globals like `ResizeObserver`, `Map`, and `Set`, where the lib declares an interface merged with a `var` whose value is a constructor.
+- Every `<Component ... />` JSX call site whose attribute-bag's contextual type resolves to the cursor symbol — typically the most common construction site for a React component's `Props` interface, since the JSX attributes are not a syntactic object literal.
 
 Results appear in a dedicated panel view.
 

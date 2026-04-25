@@ -16,6 +16,7 @@ const FIXTURES = path.resolve(__dirname, "fixtures");
 const SIMPLE = path.join(FIXTURES, "simple");
 const REFS = path.join(FIXTURES, "project-refs");
 const NEWS = path.join(FIXTURES, "news");
+const JSX_PROPS = path.join(FIXTURES, "jsx-props");
 
 // Toggle the case of every alphabetic character in a path so we can
 // simulate a case-insensitive filesystem handing us mismatched casing.
@@ -220,6 +221,67 @@ describe("findConstructions — new-expressions", () => {
     const result = findConstructions(tsconfig, typesFile, offset);
     assert.equal(result.kind, "ok");
     assert.equal(result.constructions.length, 0);
+  });
+});
+
+describe("findConstructions — JSX props interfaces", () => {
+  const tsconfig = path.join(JSX_PROPS, "tsconfig.json");
+  const componentFile = path.join(JSX_PROPS, "Greeting.tsx");
+  const usesFile = path.join(JSX_PROPS, "uses.tsx");
+
+  it("matches `<Component .../>` JSX usages as constructions of the props interface", () => {
+    // Regression: a React component's `Props` interface is "constructed"
+    // syntactically by every JSX call site, but those sites are
+    // JsxOpeningElement / JsxSelfClosingElement nodes — not
+    // ObjectLiteralExpressions. Walking only object literals missed every
+    // JSX construction and reported "No constructions found", which is
+    // the most common refactoring case for React components.
+    const offset = offsetOfIdentifier(
+      componentFile,
+      "export interface GreetingProps",
+      "GreetingProps"
+    );
+    const result = findConstructions(tsconfig, componentFile, offset);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.name, "GreetingProps");
+    const previews = result.constructions.map((c) => c.preview);
+    // One self-closing usage and one open/close usage.
+    assert.equal(
+      result.constructions.length,
+      2,
+      `expected 2 JSX constructions; got: ${previews.join(" | ")}`
+    );
+    assert.ok(previews.some((p) => p.includes('<Greeting name="Ada"')));
+    assert.ok(previews.some((p) => p.includes('<Greeting name="Grace"')));
+  });
+
+  it("returns no results for a JSX-style props interface that is never used", () => {
+    const offset = offsetOfIdentifier(
+      componentFile,
+      "export interface UnusedProps",
+      "UnusedProps"
+    );
+    const result = findConstructions(tsconfig, componentFile, offset);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.constructions.length, 0);
+  });
+
+  it("does not double-count: a JSX usage is one construction, not one per attribute", () => {
+    const offset = offsetOfIdentifier(
+      componentFile,
+      "export interface GreetingProps",
+      "GreetingProps"
+    );
+    const result = findConstructions(tsconfig, componentFile, offset);
+    assert.equal(result.kind, "ok");
+    // Sanity-check uniqueness of the recorded ranges within usesFile.
+    const ranges = result.constructions
+      .filter((c) => c.file === usesFile)
+      .map(
+        (c) =>
+          `${c.startLine.toString()}:${c.startCharacter.toString()}-${c.endLine.toString()}:${c.endCharacter.toString()}`
+      );
+    assert.equal(new Set(ranges).size, ranges.length);
   });
 });
 
