@@ -329,6 +329,32 @@ describe("findConstructions — new-expressions", () => {
     ]);
   });
 
+  it("finds `new Widget(...)` when the cursor is on a type-position annotation referring to the merged symbol (mirrors lib-type cursor: `let r: ResizeObserver = new ResizeObserver(...)` style)", () => {
+    const offset = offsetOfIdentifier(
+      typesFile,
+      "export const widgetTyped: Widget",
+      "Widget"
+    );
+    const result = findConstructions(tsconfig, typesFile, offset);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.name, "Widget");
+    const previews = result.constructions.map((c) => c.preview);
+    assert.ok(previews.some((p) => p.includes("new Widget(")));
+  });
+
+  it("finds `new Gadget(...)` when the cursor is on a type-position annotation referring to the class", () => {
+    const offset = offsetOfIdentifier(
+      typesFile,
+      "export const gadgetTyped: Gadget",
+      "Gadget"
+    );
+    const result = findConstructions(tsconfig, typesFile, offset);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.name, "Gadget");
+    const previews = result.constructions.map((c) => c.preview);
+    assert.ok(previews.some((p) => p.includes("new Gadget(")));
+  });
+
   it("returns no results for an interface that is never constructed", () => {
     const offset = offsetOfIdentifier(
       typesFile,

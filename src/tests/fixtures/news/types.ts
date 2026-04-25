@@ -31,3 +31,11 @@ export const gadgetConstruction = new Gadget("hello");
 export const widgetLikeLiteral: { observe(t: object): void } = {
   observe() {},
 };
+
+// Type-position annotations referring to the merged-symbol interface
+// and to the class. Putting the cursor on `Widget` or `Gadget` here
+// exercises the type-position cursor case (`TypeReference` →
+// `Identifier`) for these declarations, distinct from cursor-on-the-
+// declaration tested above.
+export const widgetTyped: Widget = widgetConstruction;
+export const gadgetTyped: Gadget = gadgetConstruction;
