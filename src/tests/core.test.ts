@@ -162,6 +162,31 @@ describe("findConstructions — matching", () => {
     assert.deepEqual(previews, ['export const aliasBar: Bar = { b: "x" };']);
   });
 
+  it("follows alias chains so the cursor works on import specifiers and other re-exports", () => {
+    // Regression: putting the cursor on `RenderContext` in
+    //     import { ..., RenderContext } from "./GeneratedBox";
+    // or on a type-position reference like
+    //     desiredRenderContext: RenderContext;
+    // resolved the local ImportSpecifier symbol, not the underlying
+    // InterfaceDeclaration. The plugin then refused with "is not an
+    // interface, type alias, or class". We now follow alias symbols
+    // via `checker.getAliasedSymbol` before deciding.
+    const usesFile = path.join(SIMPLE, "uses.ts");
+    const offset = offsetOfIdentifier(
+      usesFile,
+      "import { Foo, Bar, Derived, Unrelated }",
+      "Foo"
+    );
+    const result = findConstructions(tsconfig, usesFile, offset);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.name, "Foo");
+    const previews = result.constructions.map((c) => c.preview);
+    assert.ok(
+      previews.includes("export const directFoo: Foo = { a: 1 };"),
+      `missing direct match through import alias; got: ${previews.join(" | ")}`
+    );
+  });
+
   it("matches an interface with only one construction site", () => {
     const offset = offsetOfIdentifier(
       typesFile,

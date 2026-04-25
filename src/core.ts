@@ -133,11 +133,29 @@ export function findConstructions(
     };
   }
 
-  const symbol = checker.getSymbolAtLocation(token);
-  if (!symbol?.declarations?.length) {
+  const rawSymbol = checker.getSymbolAtLocation(token);
+  if (!rawSymbol?.declarations?.length) {
     return {
       kind: "error",
       message: `No symbol resolved for identifier '${token.text}'.`,
+    };
+  }
+  // The cursor may sit on an alias (an ImportSpecifier, namespace
+  // import, `export { X }` clause, etc.) rather than the underlying
+  // type declaration. Follow alias chains so the user can invoke this
+  // command on a type name anywhere it appears, not just on its
+  // definition site. `getAliasedSymbol` walks one step; loop until the
+  // target is non-alias to handle re-export chains.
+  let symbol = rawSymbol;
+  const seen = new Set<ts.Symbol>();
+  while (symbol.flags & ts.SymbolFlags.Alias && !seen.has(symbol)) {
+    seen.add(symbol);
+    symbol = checker.getAliasedSymbol(symbol);
+  }
+  if (!symbol.declarations?.length) {
+    return {
+      kind: "error",
+      message: `Alias '${token.text}' did not resolve to a declared symbol.`,
     };
   }
 
