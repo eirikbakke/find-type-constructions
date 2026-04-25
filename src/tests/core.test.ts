@@ -211,6 +211,74 @@ describe("findConstructions — matching", () => {
     );
   });
 
+  it("matches `.push({...})` onto a typed array via the element type", () => {
+    // Pattern from real codebases (e.g., loops that build a `T[]`):
+    // contextual type at the literal flows from
+    // `Array<Foo>.push(...items: Foo[])`.
+    const offset = offsetOfIdentifier(typesFile, "export interface Foo", "Foo");
+    const result = findConstructions(tsconfig, typesFile, offset);
+    assert.equal(result.kind, "ok");
+    const previews = result.constructions.map((c) => c.preview);
+    assert.ok(
+      previews.some((p) => p.includes("fooBucket.push({ a: 6 })")),
+      `missing array.push construction; got: ${previews.join(" | ")}`
+    );
+  });
+
+  it("matches inline elements of an array literal typed `Foo[]`", () => {
+    const offset = offsetOfIdentifier(typesFile, "export interface Foo", "Foo");
+    const result = findConstructions(tsconfig, typesFile, offset);
+    assert.equal(result.kind, "ok");
+    const previews = result.constructions.map((c) => c.preview);
+    // Both `{ a: 7 }` and `{ a: 8 }` live on the same line as `fooList`.
+    const hits = previews.filter((p) => p.includes("export const fooList:"));
+    assert.equal(
+      hits.length,
+      2,
+      `expected 2 array-literal element constructions; got ${hits.length.toString()}: ${previews.join(" | ")}`
+    );
+  });
+
+  it("matches a literal returned from a generic factory callback (useMemo<Foo>(() => ...) shape)", () => {
+    const offset = offsetOfIdentifier(typesFile, "export interface Foo", "Foo");
+    const result = findConstructions(tsconfig, typesFile, offset);
+    assert.equal(result.kind, "ok");
+    const previews = result.constructions.map((c) => c.preview);
+    assert.ok(
+      previews.some((p) => p.includes("return { a: 9 };")),
+      `missing factory-callback construction; got: ${previews.join(" | ")}`
+    );
+  });
+
+  it("matches a nested literal whose contextual type comes from a property annotation", () => {
+    // The outer literal is a `FooHolder`; the inner `{ a: 10 }` is a
+    // `Foo` because of `FooHolder.child: Foo`. Pins that contextual
+    // typing flows through nested object positions.
+    const offset = offsetOfIdentifier(typesFile, "export interface Foo", "Foo");
+    const result = findConstructions(tsconfig, typesFile, offset);
+    assert.equal(result.kind, "ok");
+    const previews = result.constructions.map((c) => c.preview);
+    assert.ok(
+      previews.some((p) => p.includes("child: { a: 10 }")),
+      `missing nested-property construction; got: ${previews.join(" | ")}`
+    );
+  });
+
+  it("resolves the cursor on a type used in a property annotation (use-position, no import indirection)", () => {
+    // Distinct from the import-specifier alias-following case: cursor
+    // sits on `Foo` inside `interface FooHolder { child: Foo }`. The
+    // symbol resolved is the same as if the cursor were on the
+    // `interface Foo` declaration, and the same constructions come
+    // back.
+    const usesFile = path.join(SIMPLE, "uses.ts");
+    const offset = offsetOfIdentifier(usesFile, "  child: Foo;", "Foo");
+    const result = findConstructions(tsconfig, usesFile, offset);
+    assert.equal(result.kind, "ok");
+    assert.equal(result.name, "Foo");
+    const previews = result.constructions.map((c) => c.preview);
+    assert.ok(previews.includes("export const directFoo: Foo = { a: 1 };"));
+  });
+
   it("matches an interface with only one construction site", () => {
     const offset = offsetOfIdentifier(
       typesFile,
